@@ -48,23 +48,29 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+  // Initialize Firebase before React loads
+  var firebaseConfig = {
+    apiKey: "AIzaSyCnqnG9FkZaKwV93CZYmR_YeBjYhDBR7b0",
+    authDomain: "shibal-fam-event.firebaseapp.com",
+    databaseURL: "https://shibal-fam-event-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "shibal-fam-event",
+    storageBucket: "shibal-fam-event.firebasestorage.app",
+    messagingSenderId: "776333416055",
+    appId: "1:776333416055:web:8d47febda23bde80669872",
+    measurementId: "G-YEWXMN1012"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var firebaseDB = firebase.database();
+</script>
 </head>
 <body>
 <div id="root"></div>
 
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
-
-/* ----------------------------------------------------------
-   FIREBASE CONFIG
----------------------------------------------------------- */
-// Firebase loaded via ESM below, we store db ref globally
-let firebaseDB = null;
-let firebaseRef = null;
-let firebaseSet = null;
-let firebaseOnValue = null;
-let firebaseRemove = null;
-let firebaseReady = false;
 
 /* ----------------------------------------------------------
    ADMIN KEY — Change this to your own secret!
@@ -579,76 +585,48 @@ function App() {
   const [results, setResults] = useState({});
   const [fbReady, setFbReady] = useState(false);
 
-  // Initialize Firebase
+  // Initialize Firebase listener
   useEffect(() => {
-    async function initFirebase() {
-      try {
-        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js');
-        const { getDatabase, ref, set, onValue, remove } = await import('https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js');
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyCnqnG9FkZaKwV93CZYmR_YeBjYhDBR7b0",
-          authDomain: "shibal-fam-event.firebaseapp.com",
-          databaseURL: "https://shibal-fam-event-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "shibal-fam-event",
-          storageBucket: "shibal-fam-event.firebasestorage.app",
-          messagingSenderId: "776333416055",
-          appId: "1:776333416055:web:8d47febda23bde80669872",
-          measurementId: "G-YEWXMN1012"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        firebaseDB = db;
-        firebaseRef = ref;
-        firebaseSet = set;
-        firebaseOnValue = onValue;
-        firebaseRemove = remove;
-        firebaseReady = true;
-        setFbReady(true);
-
-        // Listen for bracket changes
-        onValue(ref(db, 'bracket'), (snapshot) => {
-          const data = snapshot.val() || {};
-          setResults(data);
-        });
-      } catch (err) {
-        console.error("Firebase init error:", err);
-      }
+    try {
+      firebaseDB.ref('bracket').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        setResults(data);
+      });
+      setFbReady(true);
+    } catch (err) {
+      console.error("Firebase listen error:", err);
     }
-    initFirebase();
   }, []);
 
   const slots = computeBracket(results);
   const champion = results.match6 || null;
 
   function selectWinner(matchId, teamKey) {
-    if (!IS_ADMIN || !firebaseReady) return;
+    if (!IS_ADMIN || !fbReady) return;
     const team = teams[teamKey];
     if (!confirm(`Set ${team.name} (${team.players.join(', ')}) as winner of ${matchId.replace('match', 'Match ')}?`)) return;
-    firebaseSet(firebaseRef(firebaseDB, 'bracket/' + matchId), teamKey);
+    firebaseDB.ref('bracket/' + matchId).set(teamKey);
   }
 
   function undoMatch(matchId) {
-    if (!IS_ADMIN || !firebaseReady) return;
+    if (!IS_ADMIN || !fbReady) return;
     const deps = getDependentMatches(matchId);
     const affectedCount = deps.filter(d => results[d]).length;
     let msg = `Undo ${matchId.replace('match', 'Match ')}?`;
     if (affectedCount > 0) msg += ` This will also clear ${affectedCount} downstream match(es).`;
     if (!confirm(msg)) return;
 
-    firebaseRemove(firebaseRef(firebaseDB, 'bracket/' + matchId));
+    firebaseDB.ref('bracket/' + matchId).remove();
     for (const dep of deps) {
-      firebaseRemove(firebaseRef(firebaseDB, 'bracket/' + dep));
+      firebaseDB.ref('bracket/' + dep).remove();
     }
   }
 
   function resetBracket() {
-    if (!IS_ADMIN || !firebaseReady) return;
+    if (!IS_ADMIN || !fbReady) return;
     if (!confirm('Reset the ENTIRE bracket? This cannot be undone.')) return;
     if (!confirm('Are you absolutely sure? All match results will be erased.')) return;
-    firebaseRemove(firebaseRef(firebaseDB, 'bracket'));
+    firebaseDB.ref('bracket').remove();
   }
 
   function renderSlot(matchId, slotPos, theme) {
