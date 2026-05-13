@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Tournament Mechanics · Audition NextGen Fam Battle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #07070d;
+    color: #f4f4f8;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: auto;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse 1200px 600px at 20% 0%, rgba(16, 185, 129, 0.10), transparent 60%),
+      radial-gradient(ellipse 1200px 600px at 80% 100%, rgba(251, 113, 36, 0.10), transparent 60%),
+      radial-gradient(ellipse 800px 600px at 50% 50%, rgba(168, 85, 247, 0.08), transparent 70%),
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: auto, auto, auto, 48px 48px, 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  #root { position: relative; z-index: 1; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+const ADMIN_KEY = 'shibalfam2026';
+const params = new URLSearchParams(window.location.search);
+const IS_ADMIN = params.get('admin') === ADMIN_KEY;
+
+const C = {
+  bg: "#07070d",
+  emerald: "#10b981",
+  emeraldText: "#6ee7b7",
+  orange: "#fb7124",
+  orangeText: "#fdba74",
+  purple: "#a855f7",
+  purpleText: "#e9d5ff",
+  pink: "#ec4899",
+  pinkText: "#fbcfe8",
+  gold: "#fbbf24",
+  cyan: "#22d3ee",
+};
+
+function SectionHeader({ number, title, subtitle, accent }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 16, marginBottom: 24,
+    }}>
+      <div style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 14, fontWeight: 700,
+        color: accent,
+        padding: "6px 12px",
+        border: `1.5px solid ${accent}`,
+        borderRadius: 6,
+        boxShadow: `0 0 24px ${accent}55`,
+        background: `${accent}1A`,
+      }}>{number}</div>
+      <div>
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 36, letterSpacing: 3, color: "#fff",
+          textShadow: `0 0 20px ${accent}55`,
+          lineHeight: 1,
+        }}>{title}</div>
+        {subtitle && (
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, color: "rgba(255,255,255,0.5)",
+            letterSpacing: 2, marginTop: 4,
+          }}>{subtitle}</div>
+        )}
+      </div>
+      <div style={{
+        flex: 1, height: 2,
+        background: `linear-gradient(90deg, ${accent}, transparent)`,
+        boxShadow: `0 0 12px ${accent}`,
+      }} />
+    </div>
+  );
+}
+
+function Card({ accent, children, title, kicker, padding = 20, style = {} }) {
+  return (
+    <div style={{
+      position: "relative",
+      padding,
+      border: `1.5px solid ${accent}88`,
+      borderRadius: 14,
+      background: `linear-gradient(180deg, ${accent}14, rgba(8,8,14,0.9))`,
+      boxShadow: `0 0 16px ${accent}33, 0 12px 40px rgba(0,0,0,0.4)`,
+      ...style,
+    }}>
+      {kicker && (
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 10, letterSpacing: 3,
+          color: accent, marginBottom: 8,
+        }}>{kicker}</div>
+      )}
+      {title && (
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 24, letterSpacing: 2, color: "#fff",
+          marginBottom: 12, lineHeight: 1,
+        }}>{title}</div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function StatTile({ label, value, color }) {
+  return (
+    <div style={{
+      padding: "16px 20px",
+      border: `1px solid ${color}55`,
+      borderRadius: 10,
+      background: `linear-gradient(180deg, ${color}14, rgba(8,8,14,0.5))`,
+    }}>
+      <div style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,0.5)",
+      }}>{label}</div>
+      <div style={{
+        fontFamily: "'Bebas Neue', sans-serif",
+        fontSize: 36, color, marginTop: 4, lineHeight: 1,
+        textShadow: `0 0 12px ${color}88`,
+        letterSpacing: 1,
+      }}>{value}</div>
+    </div>
+  );
+}
+
+function Pill({ children, color }) {
+  return (
+    <span style={{
+      padding: "4px 10px",
+      borderRadius: 999,
+      border: `1px solid ${color}66`,
+      background: `${color}1A`,
+      fontFamily: "'JetBrains Mono', monospace",
+      fontSize: 10, letterSpacing: 1.5, color,
+    }}>{children}</span>
+  );
+}
+
+function NumberedItem({ n, accent, title, body }) {
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: "auto 1fr", gap: 14,
+      padding: "14px 16px",
+      borderLeft: `2px solid ${accent}`,
+      background: `linear-gradient(90deg, ${accent}10, transparent 80%)`,
+      borderRadius: "0 10px 10px 0",
+    }}>
+      <div style={{
+        fontFamily: "'Bebas Neue', sans-serif",
+        fontSize: 32, color: accent, lineHeight: 1,
+        textShadow: `0 0 10px ${accent}66`,
+        minWidth: 36,
+      }}>{n}</div>
+      <div>
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 20, letterSpacing: 1.5, color: "#fff",
+          lineHeight: 1.1,
+        }}>{title}</div>
+        <div style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: 14, lineHeight: 1.5,
+          color: "rgba(255,255,255,0.72)",
+          marginTop: 6,
+        }}>{body}</div>
+      </div>
+    </div>
+  );
+}
+
+function NavBar({ active }) {
+  const adminParam = IS_ADMIN ? '?admin=' + ADMIN_KEY : '';
+  return (
+    <div style={{
+      position: "sticky", top: 0, zIndex: 100,
+      background: "rgba(7,7,13,0.92)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid rgba(255,255,255,0.08)",
+      padding: "0 48px",
+    }}>
+      <div style={{
+        maxWidth: 1720, margin: "0 auto",
+        display: "flex", alignItems: "center", gap: 6,
+        height: 52,
+      }}>
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 20, letterSpacing: 2, color: "#fff",
+          marginRight: 24,
+        }}>SHIBAL FAM</div>
+        {[
+          { label: "BRACKET", href: "index.html" + adminParam, key: "bracket" },
+          { label: "MECHANICS", href: "mechanics.html" + adminParam, key: "mechanics" },
+        ].map(tab => (
+          <a key={tab.key} href={tab.href} style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, letterSpacing: 2,
+            padding: "8px 16px",
+            borderRadius: 6,
+            color: active === tab.key ? "#fff" : "rgba(255,255,255,0.5)",
+            background: active === tab.key ? "rgba(168,85,247,0.2)" : "transparent",
+            border: active === tab.key ? "1px solid rgba(168,85,247,0.4)" : "1px solid transparent",
+            textDecoration: "none",
+            transition: "all 0.2s",
+          }}>{tab.label}</a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <div>
+      <NavBar active="mechanics" />
+      <div style={{
+        minWidth: 1480, maxWidth: 1720, margin: "0 auto",
+        padding: "40px 48px 80px",
+      }}>
+      {/* ---------- HERO ---------- */}
+      <header style={{
+        padding: "32px 0 28px",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        marginBottom: 48,
+      }}>
+        <div style={{
+          display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+          gap: 32, flexWrap: "wrap",
+        }}>
+          <div>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12, marginBottom: 12,
+            }}>
+              <div style={{
+                width: 10, height: 10, background: C.purple, borderRadius: 2,
+                boxShadow: `0 0 12px ${C.purple}`,
+              }} />
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 12, letterSpacing: 3, color: C.purple,
+              }}>AUDITION NEXTGEN · FAM BATTLE · OFFICIAL RULEBOOK</span>
+            </div>
+            <h1 style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 112, lineHeight: 0.9, letterSpacing: 2,
+              margin: 0,
+              background: `linear-gradient(180deg, #fff 0%, #fff 55%, ${C.purple}B3 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              textShadow: `0 0 60px ${C.purple}40`,
+            }}>
+              TOURNAMENT<br/>MECHANICS
+            </h1>
+            <div style={{
+              fontSize: 18, color: "rgba(255,255,255,0.6)",
+              marginTop: 10, maxWidth: 660,
+            }}>
+              Every rule, song-pool detail, schedule, and call you need to know — from song submissions to the All-Star showcase.
+            </div>
+          </div>
+
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(4, auto)", gap: 12,
+          }}>
+            <StatTile label="MODE" value="FAM 3v3" color={C.emerald} />
+            <StatTile label="SERIES" value="RACE-3" color={C.cyan} />
+            <StatTile label="SONG POOL" value="24" color={C.purple} />
+            <StatTile label="EVENT DATE" value="05·16" color={C.pink} />
+          </div>
+        </div>
+      </header>
+
+      {/* =========================================================
+          01 · MATCH FORMAT
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="01" title="MATCH FORMAT" subtitle="HOW EACH FAM BATTLE IS PLAYED" accent={C.emerald} />
+
+        <div style={{
+          display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 24,
+        }}>
+          <Card accent={C.emerald} kicker="// SERIES LENGTH" title="FAM BATTLE · RACE TO 3 WINS" padding={24}>
+            <p style={{
+              margin: 0, fontSize: 15, lineHeight: 1.6,
+              color: "rgba(255,255,255,0.78)",
+            }}>
+              Every match is played in <b style={{color:C.emeraldText}}>Fam Battle (3v3)</b>. The first team to win <b style={{color:C.emeraldText}}>3 songs</b> takes the match. Matches run between <b>3 and 5 songs</b> depending on results.
+            </p>
+
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8,
+              marginTop: 18,
+            }}>
+              {[
+                { g: "S1", state: "PLAYED" },
+                { g: "S2", state: "PLAYED" },
+                { g: "S3", state: "PLAYED" },
+                { g: "S4", state: "IF NEEDED" },
+                { g: "S5", state: "IF NEEDED" },
+              ].map(x => (
+                <div key={x.g} style={{
+                  padding: "10px 8px",
+                  border: `1px dashed ${C.emerald}66`,
+                  borderRadius: 10,
+                  background: "rgba(0,0,0,0.4)",
+                  textAlign: "center",
+                }}>
+                  <div style={{
+                    fontFamily: "'Bebas Neue', sans-serif", fontSize: 24,
+                    color: "#fff", lineHeight: 1, letterSpacing: 1,
+                  }}>{x.g}</div>
+                  <div style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 8, letterSpacing: 1.5, color: C.emeraldText,
+                    marginTop: 6,
+                  }}>{x.state}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 18, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Pill color={C.emerald}>3v3 FAM BATTLE</Pill>
+              <Pill color={C.emerald}>FIRST TO 3 WINS</Pill>
+              <Pill color={C.emerald}>MIN 4 MIN / SONG</Pill>
+              <Pill color={C.emerald}>NO REMAKES</Pill>
+            </div>
+          </Card>
+
+          <Card accent={C.emerald} kicker="// KEY RULES" title="BEFORE YOU PLAY" padding={24}>
+            <div style={{ display: "grid", gap: 8 }}>
+              {[
+                "All 3 players must be online & ready before song start.",
+                "Disconnects mid-song = song is replayed once. A second DC = lost song.",
+                "Highest team score on the result screen wins the song.",
+                "Match results are recorded by admin via screenshot.",
+              ].map(line => (
+                <div key={line} style={{
+                  display: "grid", gridTemplateColumns: "auto 1fr", gap: 10,
+                  padding: "10px 12px",
+                  background: "rgba(0,0,0,0.35)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  alignItems: "start",
+                }}>
+                  <span style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 12, color: C.emerald, fontWeight: 700,
+                  }}>›</span>
+                  <span style={{
+                    fontSize: 13, color: "rgba(255,255,255,0.78)", lineHeight: 1.5,
+                  }}>{line}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* =========================================================
+          02 · SONG POOL & SUBMISSIONS
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="02" title="SONG POOL & SUBMISSIONS" subtitle="WHAT EACH TEAM BRINGS TO THE FLOOR" accent={C.cyan} />
+
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24,
+        }}>
+          <Card accent={C.cyan} kicker="// SUBMISSION RULES" title="6 SONGS · 2 DAYS BEFORE" padding={24}>
+            <p style={{
+              margin: 0, fontSize: 14, lineHeight: 1.6,
+              color: "rgba(255,255,255,0.78)",
+            }}>
+              Every team must submit <b style={{color:C.cyan}}>6 songs</b> to the admin team <b style={{color:C.cyan}}>at least 2 days before the event</b>. These are pooled with every other team's submissions into one combined event pool.
+            </p>
+
+            <div style={{
+              marginTop: 18, padding: 18,
+              border: `1.5px dashed ${C.cyan}66`,
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.4)",
+              textAlign: "center",
+            }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, letterSpacing: 2, color: C.cyan,
+              }}>COMBINED POOL</div>
+              <div style={{
+                display: "flex", alignItems: "baseline", justifyContent: "center",
+                gap: 14, marginTop: 8,
+              }}>
+                <span style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 28, color: "rgba(255,255,255,0.75)",
+                }}>4 TEAMS</span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 18, color: C.cyan,
+                }}>×</span>
+                <span style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 28, color: "rgba(255,255,255,0.75)",
+                }}>6 SONGS</span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 18, color: C.cyan,
+                }}>=</span>
+                <span style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 56, color: "#fff",
+                  textShadow: `0 0 20px ${C.cyan}88`,
+                }}>24</span>
+              </div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11, letterSpacing: 1.5,
+                color: "rgba(255,255,255,0.5)", marginTop: 4,
+              }}>SONGS IN THE COMBINED POOL</div>
+            </div>
+
+            <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Pill color={C.cyan}>DUE 48H BEFORE</Pill>
+              <Pill color={C.cyan}>NO DUPLICATES</Pill>
+              <Pill color={C.cyan}>ADMIN APPROVAL</Pill>
+            </div>
+          </Card>
+
+          <Card accent={C.cyan} kicker="// POOL BEHAVIOR" title="HOW THE POOL WORKS" padding={24}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <NumberedItem n="01" accent={C.cyan} title="Pool resets every match"
+                body="Each new match starts with the full 24-song pool. Songs banned or played in a previous match are back in play." />
+              <NumberedItem n="02" accent={C.cyan} title="Songs are tracked by admin"
+                body="Admins maintain a live song-tracker showing which songs are picked, banned, or remaining inside each match." />
+              <NumberedItem n="03" accent={C.cyan} title="Late or invalid submissions"
+                body="Teams that miss the 48-hour deadline forfeit their slots in the pool — the match still proceeds with the remaining songs." />
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* =========================================================
+          03 · PICK + VETO FLOW
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="03" title="PICK + VETO FLOW" subtitle="HOW SONGS ARE CHOSEN INSIDE A MATCH" accent={C.purple} />
+
+        <Card accent={C.purple} padding={26}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14,
+          }}>
+            {[
+              {
+                step: "01",
+                title: "SONG 1",
+                head: "RANDOM ROLL",
+                body: "Admin randomly selects the opening song from the full 24-song combined pool.",
+                color: C.purple,
+              },
+              {
+                step: "02",
+                title: "AFTER SONG 1",
+                head: "LOSER BANS 5",
+                body: "The team that lost Song 1 bans exactly 5 songs from the pool — one time only.",
+                color: C.orange,
+              },
+              {
+                step: "03",
+                title: "SONGS 2 → 5",
+                head: "WINNER PICKS",
+                body: "After every following song, the winner of the previous song picks the next from the remaining pool.",
+                color: C.emerald,
+              },
+              {
+                step: "04",
+                title: "MATCH ENDS",
+                head: "FIRST TO 3",
+                body: "First team to reach 3 song wins takes the match. The pool then resets for the next match.",
+                color: C.gold,
+              },
+            ].map(s => (
+              <div key={s.step} style={{
+                position: "relative",
+                padding: 16,
+                border: `1.5px solid ${s.color}77`,
+                borderRadius: 12,
+                background: `linear-gradient(180deg, ${s.color}14, rgba(8,8,14,0.6))`,
+                boxShadow: `0 0 16px ${s.color}33`,
+              }}>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, letterSpacing: 2, color: s.color,
+                }}>STEP {s.step}</div>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2, letterSpacing: 1.5,
+                }}>{s.title}</div>
+                <div style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 26, letterSpacing: 1.5, color: "#fff",
+                  marginTop: 8, lineHeight: 1,
+                  textShadow: `0 0 12px ${s.color}55`,
+                }}>{s.head}</div>
+                <div style={{
+                  fontSize: 13, color: "rgba(255,255,255,0.72)", marginTop: 8,
+                  lineHeight: 1.5,
+                }}>{s.body}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            marginTop: 22,
+            padding: "14px 18px",
+            border: `1px solid ${C.purple}33`,
+            borderRadius: 10,
+            background: `${C.purple}0D`,
+            display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap",
+          }}>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, letterSpacing: 2, color: C.purpleText,
+            }}>⚙ POOL MATH</span>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 12, color: "rgba(255,255,255,0.7)",
+            }}>24 songs in pool → 1 played (S1) → 5 banned → <b style={{color:"#fff"}}>18 songs left</b> for songs 2 through 5.</span>
+          </div>
+        </Card>
+      </section>
+
+      {/* =========================================================
+          04 · BRACKET FLOW
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="04" title="BRACKET FLOW" subtitle="HOW TEAMS PROGRESS THROUGH THE EVENT" accent={C.orange} />
+
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24,
+        }}>
+          <Card accent={C.emerald} kicker="WIN A WB MATCH" title="STAY ON THE UPPER ROAD" padding={22}>
+            <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7, color: "rgba(255,255,255,0.78)", fontSize: 14 }}>
+              <li>Advance to the next Winners Bracket round.</li>
+              <li>Carry a clean record into Grand Finals seeding.</li>
+              <li>The WB Champion is seeded directly into Match 06 (Grand Finals).</li>
+            </ul>
+          </Card>
+
+          <Card accent={C.orange} kicker="LOSE A WB MATCH" title="DROP TO LOSERS" padding={22}>
+            <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7, color: "rgba(255,255,255,0.78)", fontSize: 14 }}>
+              <li>You're not out — drop to the Losers Bracket.</li>
+              <li>Win out through LB Round 1 → LB Finals to reach Grand Finals.</li>
+              <li>Lose once in the Losers Bracket and you're eliminated.</li>
+            </ul>
+          </Card>
+
+          <Card accent={C.purple} kicker="GRAND FINALS · MATCH 06" title="ONE MATCH · ONE CHAMPION" padding={22}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.78)" }}>
+              The WB Champion faces the LB Champion in a single <b style={{color:C.purpleText}}>Race to 3</b> Fam Battle. Winner is crowned <b style={{color:C.gold}}>Grand Champion</b>.
+            </p>
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Pill color={C.purple}>NO BRACKET RESET</Pill>
+              <Pill color={C.gold}>WINNER TAKES THE TITLE</Pill>
+            </div>
+          </Card>
+
+          <Card accent={C.pink} kicker="POST-FINALS" title="ALL-STAR SHOWCASE" padding={22}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.78)" }}>
+              After Grand Finals, the Top 3 players by <b style={{color:C.pinkText}}>average Perfect Chain</b> form an All-Star squad and face the <b style={{color:C.gold}}>Grand Champion team</b> in a Race-to-3 exhibition.
+            </p>
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Pill color={C.pink}>EXHIBITION</Pill>
+              <Pill color={C.pink}>NO BRACKET IMPACT</Pill>
+            </div>
+          </Card>
+        </div>
+
+        <div style={{
+          marginTop: 20,
+          padding: "16px 22px",
+          border: `1px solid ${C.orange}55`,
+          borderRadius: 12,
+          background: `${C.orange}10`,
+          display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap",
+        }}>
+          <span style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, letterSpacing: 2, color: C.orangeText,
+          }}>⏱ MATCH ORDER</span>
+          <span style={{
+            fontSize: 14, color: "rgba(255,255,255,0.75)",
+          }}>All matches are played <b style={{color:"#fff"}}>back-to-back</b> (never in parallel) so every Fam Battle gets full broadcast focus.</span>
+        </div>
+      </section>
+
+      {/* =========================================================
+          05 · ALL-STAR QUALIFICATION
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="05" title="ALL-STAR QUALIFICATION" subtitle="HOW THE TOP 3 ARE CHOSEN" accent={C.pink} />
+
+        <div style={{
+          display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 24,
+        }}>
+          <Card accent={C.pink} kicker="// THE METRIC" title="HIGHEST AVERAGE PERFECT CHAIN" padding={24}>
+            <p style={{
+              margin: 0, fontSize: 15, lineHeight: 1.6,
+              color: "rgba(255,255,255,0.78)",
+            }}>
+              At the end of the Grand Finals, we calculate every player's <b style={{color:C.pinkText}}>average Perfect Chain (combo) per song</b> across every song they played. The <b style={{color:C.pinkText}}>top 3 players</b> by average Perfect Chain are pulled into the All-Star Squad.
+            </p>
+            <p style={{
+              margin: "10px 0 0 0", fontSize: 13, lineHeight: 1.55,
+              color: "rgba(255,255,255,0.55)", fontStyle: "italic",
+            }}>
+              Using the average (not the raw total) keeps it fair: a player whose team is eliminated early isn't penalized for playing fewer songs than someone who went deep into the bracket.
+            </p>
+
+            <div style={{
+              marginTop: 18,
+              padding: 16,
+              border: `1px dashed ${C.pink}66`,
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.35)",
+            }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, letterSpacing: 2, color: C.pinkText, marginBottom: 6,
+              }}>EXAMPLE</div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {[
+                  { p: "Player X", c: "Team A · 5 songs", v: "684 avg" },
+                  { p: "Player Y", c: "Team C · 3 songs", v: "651 avg" },
+                  { p: "Player Z", c: "Team A · 5 songs", v: "622 avg" },
+                ].map((r, i) => (
+                  <div key={r.p} style={{
+                    display: "grid", gridTemplateColumns: "auto 1fr auto auto", gap: 12,
+                    alignItems: "center",
+                    padding: "8px 0",
+                    borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  }}>
+                    <span style={{
+                      fontFamily: "'Bebas Neue', sans-serif", fontSize: 22,
+                      color: C.pink, lineHeight: 1, width: 28,
+                    }}>#{i+1}</span>
+                    <span style={{ fontSize: 14, color: "#fff", fontWeight: 500 }}>{r.p}</span>
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 11, color: "rgba(255,255,255,0.5)",
+                    }}>{r.c}</span>
+                    <span style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 22, color: "#fff", letterSpacing: 1,
+                      textShadow: `0 0 10px ${C.pink}66`,
+                    }}>{r.v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                marginTop: 8,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, color: "rgba(255,255,255,0.5)",
+                letterSpacing: 1,
+              }}>↑ TOP 3 CAN COME FROM THE SAME TEAM OR DIFFERENT TEAMS</div>
+            </div>
+          </Card>
+
+          <Card accent={C.pink} kicker="// TIEBREAKERS" title="IF AVERAGES TIE" padding={24}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <NumberedItem n="01" accent={C.pink} title="Highest single-song Perfect Chain"
+                body="Whoever pulled the biggest single combo in any one song breaks the tie." />
+              <NumberedItem n="02" accent={C.pink} title="Most songs played"
+                body="If still tied, the player who played more songs (i.e. went deeper in the bracket) wins the tiebreaker." />
+              <NumberedItem n="03" accent={C.pink} title="Admin discretion"
+                body="If still tied, head admins make the call based on overall impact and recorded stats." />
+            </div>
+          </Card>
+        </div>
+
+        <div style={{
+          marginTop: 20,
+          padding: "20px 24px",
+          border: `1.5px solid ${C.pink}88`,
+          borderRadius: 14,
+          background: `linear-gradient(90deg, ${C.pink}22, ${C.purple}14, ${C.gold}14)`,
+          boxShadow: `0 0 24px ${C.pink}44`,
+          display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap",
+          justifyContent: "space-between",
+        }}>
+          <div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, letterSpacing: 2, color: C.pinkText, marginBottom: 6,
+            }}>★ ALL-STAR SQUAD</div>
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 30, letterSpacing: 2, color: "#fff", lineHeight: 1,
+            }}>TOP 3 AVERAGE PERFECT-CHAIN LEADERS</div>
+            <div style={{
+              fontSize: 13, color: "rgba(255,255,255,0.65)", marginTop: 6,
+            }}>Locked in immediately after Grand Finals. Same team or mixed — whoever has the highest totals.</div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {["#1", "#2", "#3"].map(t => (
+              <div key={t} style={{
+                padding: "10px 16px",
+                border: `1px dashed ${C.pink}88`,
+                borderRadius: 10, textAlign: "center", minWidth: 80,
+                background: "rgba(0,0,0,0.3)",
+              }}>
+                <div style={{
+                  fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "#fff", lineHeight: 1,
+                }}>{t}</div>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
+                  color: C.pinkText, letterSpacing: 1.5, marginTop: 4,
+                }}>AVG CHAIN</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
+          06 · ROSTER RULES
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="06" title="ROSTER RULES" subtitle="3 PLAYERS · NO SUBSTITUTES" accent={C.cyan} />
+
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20,
+        }}>
+          <Card accent={C.cyan} kicker="// THE LINEUP" title="3 PLAYERS PER TEAM" padding={22}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.75)" }}>
+              Every team submits a roster of exactly <b style={{color:C.cyan}}>3 players</b>. Rosters are locked once the bracket goes live and cannot be changed.
+            </p>
+          </Card>
+          <Card accent={C.cyan} kicker="// NO SUBS" title="ZERO SUBSTITUTES" padding={22}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.75)" }}>
+              <b style={{color:C.cyan}}>No substitutions allowed.</b> The 3 players on the roster are the only 3 who can play. Account-sharing is strictly prohibited.
+            </p>
+          </Card>
+          <Card accent={C.cyan} kicker="// NO-SHOW" title="15 MIN GRACE PERIOD" padding={22}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.75)" }}>
+              If a team fails to have all 3 players online within <b style={{color:C.cyan}}>15 minutes</b> of the scheduled match start, the match is forfeited and the opponent advances.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      {/* =========================================================
+          07 · SCHEDULE
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="07" title="EVENT SCHEDULE" subtitle="MAY 16, 2026 · 7:00 PM" accent={C.purple} />
+
+        <Card accent={C.purple} padding={26}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 14, marginBottom: 18,
+            paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 40, color: "#fff", lineHeight: 1, letterSpacing: 2,
+            }}>SAT · MAY 16 · 2026</div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, letterSpacing: 2, color: C.purpleText,
+              padding: "4px 10px", borderRadius: 4,
+              border: `1px solid ${C.purple}66`, background: `${C.purple}1A`,
+            }}>DOORS OPEN 7:00 PM</div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 0 }}>
+            {[
+              { time: "7:00 PM", block: "CHECK-IN OPENS", note: "All 3 starters from every team must confirm in the official Discord roster channel.", color: C.emerald },
+              { time: "7:15 PM", block: "OPENING + BRACKET REVIEW", note: "Casters introduce teams. Admins announce the 24-song combined pool.", color: C.emerald },
+              { time: "7:30 PM", block: "WB ROUND 1 · MATCH 01", note: "Team A vs Team D · Race to 3. Loser drops to Losers Bracket.", color: C.emerald },
+              { time: "7:55 PM", block: "WB ROUND 1 · MATCH 02", note: "Team B vs Team C · Race to 3. Loser drops to Losers Bracket.", color: C.emerald },
+              { time: "8:25 PM", block: "WB FINALS · MATCH 03", note: "Winners of Match 01 + 02. WB Champion seeds directly to Grand Finals.", color: C.emerald },
+              { time: "8:55 PM", block: "BREAK · 10 MIN", note: "Caster recap + stretch.", color: "#94a3b8" },
+              { time: "9:05 PM", block: "LB ROUND 1 · MATCH 04", note: "Losers of Match 01 + 02. Loser eliminated · 4th place.", color: C.orange },
+              { time: "9:30 PM", block: "LB FINALS · MATCH 05", note: "Winner of Match 04 vs Loser of Match 03. Loser eliminated · 3rd place.", color: C.orange },
+              { time: "10:00 PM", block: "BREAK · 15 MIN", note: "Pre-finals intermission. Caster review of bracket.", color: "#94a3b8" },
+              { time: "10:15 PM", block: "GRAND FINALS · MATCH 06", note: "WB Champion vs LB Champion · Race to 3. Crowns the Grand Champion.", color: C.purple },
+              { time: "10:50 PM", block: "ALL-STAR SHOWCASE", note: "Top 3 average-Perfect-Chain leaders vs Grand Champion team · Race-to-3 exhibition.", color: C.pink },
+              { time: "11:25 PM", block: "AWARDS & CLOSING", note: "Prize distribution + final shoutouts.", color: C.gold },
+            ].map((row, i, arr) => (
+              <React.Fragment key={row.time + row.block}>
+                <div style={{
+                  padding: "14px 18px 14px 0",
+                  borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  display: "flex", alignItems: "center", gap: 14,
+                }}>
+                  <div style={{
+                    width: 10, height: 10, borderRadius: 999,
+                    background: row.color, boxShadow: `0 0 10px ${row.color}`,
+                  }} />
+                  <div style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 26, color: "#fff", letterSpacing: 1, lineHeight: 1,
+                    minWidth: 110,
+                  }}>{row.time}</div>
+                </div>
+                <div style={{
+                  padding: "14px 0",
+                  borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                }}>
+                  <div style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 20, letterSpacing: 2, color: row.color,
+                    lineHeight: 1,
+                  }}>{row.block}</div>
+                  <div style={{
+                    fontSize: 13, color: "rgba(255,255,255,0.65)", marginTop: 4,
+                    lineHeight: 1.5,
+                  }}>{row.note}</div>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+          <div style={{
+            marginTop: 14, padding: "10px 12px",
+            border: `1px dashed ${C.purple}55`,
+            borderRadius: 8,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, letterSpacing: 1.2,
+            color: "rgba(255,255,255,0.55)",
+          }}>
+            ⏱ Each match assumed ~25 min (Race-to-3, min 4 min per song + transitions). Times shift if matches end early or run long.
+          </div>
+        </Card>
+      </section>
+
+      {/* =========================================================
+          08 · CONDUCT & DISPUTES
+      ========================================================= */}
+      <section style={{ marginBottom: 56 }}>
+        <SectionHeader number="08" title="CONDUCT & DISPUTES" subtitle="HOW WE KEEP IT CLEAN" accent={C.orange} />
+
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20,
+        }}>
+          <Card accent={C.orange} kicker="// CODE OF CONDUCT" title="THE NON-NEGOTIABLES" padding={24}>
+            <div style={{ display: "grid", gap: 10 }}>
+              {[
+                { t: "Respect everyone", b: "No slurs, harassment, or targeted toxicity in voice, chat, or stream." },
+                { t: "No cheats or third-party tools", b: "Macros, auto-clickers, or unauthorized mods = instant disqualification." },
+                { t: "No stream-sniping", b: "Players must mute the broadcast or wear closed headphones during their own matches." },
+                { t: "No account sharing", b: "The player on the submitted roster is the only player allowed to play." },
+                { t: "Be ready on time", b: "All 3 players online and queued before the scheduled match start." },
+              ].map(r => (
+                <div key={r.t} style={{
+                  padding: "10px 12px",
+                  background: "rgba(0,0,0,0.35)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 10,
+                }}>
+                  <div style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 18, letterSpacing: 1.5, color: C.orangeText,
+                    lineHeight: 1,
+                  }}>{r.t}</div>
+                  <div style={{
+                    fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4,
+                    lineHeight: 1.5,
+                  }}>{r.b}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card accent={C.orange} kicker="// FILING A DISPUTE" title="THE PROCESS" padding={24}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <NumberedItem n="01" accent={C.orange} title="Flag the admin immediately"
+                body="Stop the next song from queuing and ping an admin in Discord the moment something goes wrong." />
+              <NumberedItem n="02" accent={C.orange} title="Submit evidence (within 10 min)"
+                body="Screenshots of the result screen, in-game chat, or VOD timestamps — sent in the Discord disputes channel." />
+              <NumberedItem n="03" accent={C.orange} title="Admin ruling (within 15 min)"
+                body="Head admin reviews and rules within 15 min. The ruling is final and not appealable mid-event." />
+              <NumberedItem n="04" accent={C.orange} title="Resume, replay, or award"
+                body="Depending on the call: continue the match, replay the disputed song, or award the song / match to the affected team." />
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* =========================================================
+          09 · PRIZE RECAP
+      ========================================================= */}
+      <section style={{ marginBottom: 24 }}>
+        <SectionHeader number="09" title="PRIZE RECAP" subtitle="WHAT YOU'RE PLAYING FOR" accent={C.gold} />
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr) 1.2fr",
+          gap: 14,
+        }}>
+          {[
+            { place: "1ST", label: "GRAND WINNER", cash: "₱3,000", note: "FOR THE TEAM", color: C.gold, big: true },
+            { place: "2ND", label: "RUNNER-UP", cash: "₱500", note: "PER PLAYER", color: "#e5e7eb" },
+            { place: "3RD", label: "BRONZE", cash: "₱200", note: "PER PLAYER", color: "#f59e0b" },
+            { place: "4TH", label: "FINALIST", cash: "—", note: "PARTICIPATION", color: "#94a3b8" },
+          ].map(p => (
+            <div key={p.place} style={{
+              padding: 16,
+              border: `1.5px solid ${p.color}`,
+              borderRadius: 12,
+              background: `linear-gradient(180deg, ${p.color}1A, rgba(8,8,14,0.9))`,
+              boxShadow: p.big ? `0 0 24px ${p.color}77` : `0 0 12px ${p.color}33`,
+              transform: p.big ? "translateY(-4px)" : "none",
+            }}>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: p.big ? 52 : 42,
+                color: p.color, lineHeight: 1,
+                textShadow: `0 0 12px ${p.color}66`,
+              }}>{p.place}</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9, letterSpacing: 2, color: p.color, marginTop: 6,
+              }}>{p.label}</div>
+              <div style={{
+                marginTop: 12,
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: p.big ? 38 : 30, color: "#fff",
+                lineHeight: 1, letterSpacing: 1,
+              }}>{p.cash}</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9, color: "rgba(255,255,255,0.55)",
+                letterSpacing: 1.5, marginTop: 4,
+              }}>{p.note}</div>
+              <div style={{
+                marginTop: 12,
+                padding: "6px 8px",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9, color: "rgba(255,255,255,0.8)",
+                border: `1px solid ${p.color}55`,
+                borderRadius: 6,
+                background: "rgba(0,0,0,0.3)",
+                letterSpacing: 1,
+              }}>✦ EMOTICONS · 30D</div>
+            </div>
+          ))}
+
+          <div style={{
+            padding: 16,
+            border: `1.5px solid ${C.pink}`,
+            borderRadius: 12,
+            background: `linear-gradient(180deg, ${C.pink}22, rgba(8,8,14,0.9))`,
+            boxShadow: `0 0 16px ${C.pink}55`,
+            display: "flex", flexDirection: "column", justifyContent: "space-between",
+          }}>
+            <div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 42, color: C.pink, lineHeight: 1,
+                textShadow: `0 0 12px ${C.pink}66`,
+              }}>★ BONUS</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9, letterSpacing: 2, color: C.pinkText, marginTop: 6,
+              }}>ALL-STAR SHOWCASE</div>
+            </div>
+            <div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 42, color: "#fff",
+                lineHeight: 1, letterSpacing: 1,
+                textShadow: `0 0 14px ${C.pink}88`,
+              }}>₱2,000</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9, color: "rgba(255,255,255,0.6)",
+                letterSpacing: 1.5, marginTop: 4,
+              }}>TOTAL POT · WINNING SIDE</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- FOOTER ---------- */}
+      <footer style={{
+        marginTop: 56,
+        paddingTop: 24,
+        borderTop: "1px solid rgba(255,255,255,0.08)",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        flexWrap: "wrap", gap: 16,
+      }}>
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 11, letterSpacing: 2, color: "rgba(255,255,255,0.4)",
+        }}>
+          MECHANICS v2.0 · AUDITION NEXTGEN · FAM BATTLE · ALL ADMIN RULINGS FINAL
+        </div>
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 11, letterSpacing: 2, color: "rgba(255,255,255,0.4)",
+        }}>
+          COMPANION DOC → DOUBLE ELIMINATION BRACKET
+        </div>
+      </footer>
+    </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
