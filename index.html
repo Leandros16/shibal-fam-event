@@ -581,6 +581,47 @@ function ChampionBanner({ winner }) {
 /* ----------------------------------------------------------
    APP
 ---------------------------------------------------------- */
+function NavBar({ active }) {
+  const adminParam = IS_ADMIN ? '?admin=' + ADMIN_KEY : '';
+  return (
+    <div style={{
+      position: "sticky", top: 0, zIndex: 100,
+      background: "rgba(7,7,13,0.92)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid rgba(255,255,255,0.08)",
+      padding: "0 48px",
+    }}>
+      <div style={{
+        maxWidth: 1720, margin: "0 auto",
+        display: "flex", alignItems: "center", gap: 6,
+        height: 52,
+      }}>
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 20, letterSpacing: 2, color: "#fff",
+          marginRight: 24,
+        }}>SHIBAL FAM</div>
+        {[
+          { label: "BRACKET", href: "index.html" + adminParam, key: "bracket" },
+          { label: "MECHANICS", href: "mechanics.html" + adminParam, key: "mechanics" },
+        ].map(tab => (
+          <a key={tab.key} href={tab.href} style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, letterSpacing: 2,
+            padding: "8px 16px",
+            borderRadius: 6,
+            color: active === tab.key ? "#fff" : "rgba(255,255,255,0.5)",
+            background: active === tab.key ? "rgba(168,85,247,0.2)" : "transparent",
+            border: active === tab.key ? "1px solid rgba(168,85,247,0.4)" : "1px solid transparent",
+            textDecoration: "none",
+            transition: "all 0.2s",
+          }}>{tab.label}</a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [results, setResults] = useState({});
   const [fbReady, setFbReady] = useState(false);
@@ -644,12 +685,14 @@ function App() {
   }
 
   return (
-    <div style={{
-      minWidth: 1480,
-      maxWidth: 1720,
-      margin: "0 auto",
-      padding: "40px 48px 80px",
-    }}>
+    <div>
+      <NavBar active="bracket" />
+      <div style={{
+        minWidth: 1480,
+        maxWidth: 1720,
+        margin: "0 auto",
+        padding: "40px 48px 80px",
+      }}>
       {/* ---------- HERO ---------- */}
       <header style={{
         position: "relative",
@@ -1404,6 +1447,7 @@ function App() {
           ))}
         </div>
       </footer>
+    </div>
     </div>
   );
 }
