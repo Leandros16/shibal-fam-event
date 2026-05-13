@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Double Elimination Bracket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #07070d;
+    color: #f4f4f8;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: auto;
+  }
+
+  /* Background: subtle grid + radial vignettes */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse 1200px 600px at 20% 0%, rgba(16, 185, 129, 0.10), transparent 60%),
+      radial-gradient(ellipse 1200px 600px at 80% 100%, rgba(251, 113, 36, 0.10), transparent 60%),
+      radial-gradient(ellipse 800px 600px at 50% 50%, rgba(168, 85, 247, 0.08), transparent 70%),
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: auto, auto, auto, 48px 48px, 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #root { position: relative; z-index: 1; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+
+/* ----------------------------------------------------------
+   HELPERS
+---------------------------------------------------------- */
+function hexToRgba(hex, alpha) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/* ----------------------------------------------------------
+   COLOR THEMES per section
+---------------------------------------------------------- */
+const themes = {
+  winners: {
+    name: "WINNERS BRACKET",
+    accent: "#10b981",
+    accentDim: "rgba(16, 185, 129, 0.35)",
+    glow: "0 0 24px rgba(16, 185, 129, 0.55), 0 0 48px rgba(16, 185, 129, 0.20)",
+    text: "#6ee7b7",
+    chip: "rgba(16, 185, 129, 0.12)",
+    border: "rgba(16, 185, 129, 0.55)",
+  },
+  losers: {
+    name: "LOSERS BRACKET",
+    accent: "#fb7124",
+    accentDim: "rgba(251, 113, 36, 0.35)",
+    glow: "0 0 24px rgba(251, 113, 36, 0.55), 0 0 48px rgba(251, 113, 36, 0.20)",
+    text: "#fdba74",
+    chip: "rgba(251, 113, 36, 0.12)",
+    border: "rgba(251, 113, 36, 0.55)",
+  },
+  grand: {
+    name: "GRAND FINALS",
+    accent: "#a855f7",
+    accentDim: "rgba(168, 85, 247, 0.35)",
+    glow: "0 0 28px rgba(168, 85, 247, 0.65), 0 0 60px rgba(234, 179, 8, 0.25)",
+    text: "#e9d5ff",
+    chip: "rgba(168, 85, 247, 0.14)",
+    border: "rgba(168, 85, 247, 0.65)",
+    gold: "#fbbf24",
+  },
+  allstar: {
+    name: "ALL-STAR SHOWCASE",
+    accent: "#ec4899",
+    accentDim: "rgba(236, 72, 153, 0.35)",
+    glow: "0 0 24px rgba(236, 72, 153, 0.55), 0 0 48px rgba(236, 72, 153, 0.20)",
+    text: "#fbcfe8",
+    chip: "rgba(236, 72, 153, 0.12)",
+    border: "rgba(236, 72, 153, 0.55)",
+  },
+};
+
+/* ----------------------------------------------------------
+   DATA
+---------------------------------------------------------- */
+const teams = {
+  A: { name: "TEAM A", code: "A", color: "#22d3ee", players: ["miyaw", "Aesui", "Miaoyi"] },
+  B: { name: "TEAM B", code: "B", color: "#f472b6", players: ["awii", "deiin", "Leandree"] },
+  C: { name: "TEAM C", code: "C", color: "#facc15", players: ["Gundina", "nescafe", "svn"] },
+  D: { name: "TEAM D", code: "D", color: "#a3e635", players: ["zyrk", "Kny", "lykkie"] },
+};
+
+/* ----------------------------------------------------------
+   PRIMITIVES
+---------------------------------------------------------- */
+
+function TeamCard({ team, theme, compact }) {
+  return (
+    <div style={{
+      position: "relative",
+      background: "linear-gradient(180deg, rgba(20,20,28,0.95), rgba(12,12,18,0.95))",
+      border: `1.5px solid ${theme.border}`,
+      borderRadius: 10,
+      padding: compact ? "10px 12px" : "12px 14px",
+      boxShadow: `${theme.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+      minWidth: 220,
+    }}>
+      {/* Color stripe */}
+      <div style={{
+        position: "absolute", left: 0, top: 8, bottom: 8, width: 3,
+        background: team.color, borderRadius: 2,
+        boxShadow: `0 0 12px ${team.color}`,
+      }} />
+
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginLeft: 8 }}>
+        <span style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 28, letterSpacing: 1, color: "#fff",
+          lineHeight: 1,
+        }}>{team.name}</span>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 11, color: team.color, fontWeight: 700,
+        }}>[{team.code}]</span>
+      </div>
+
+      <div style={{
+        marginTop: 8, marginLeft: 8,
+        display: "grid", gridTemplateColumns: "1fr", gap: 2,
+      }}>
+        {team.players.map((p, i) => (
+          <div key={p} style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 12, color: "rgba(244,244,248,0.75)",
+            display: "flex", gap: 8,
+          }}>
+            <span style={{ color: "rgba(255,255,255,0.3)" }}>0{i+1}</span>
+            <span>{p}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TBDCard({ label, theme }) {
+  return (
+    <div style={{
+      background: "rgba(10,10,16,0.6)",
+      border: `1.5px dashed ${theme.border}`,
+      borderRadius: 10,
+      padding: "18px 14px",
+      minWidth: 220,
+      minHeight: 96,
+      display: "flex", flexDirection: "column", justifyContent: "center",
+      gap: 6,
+    }}>
+      <div style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 10, color: theme.text, letterSpacing: 1.5,
+      }}>// AWAITING</div>
+      <div style={{
+        fontFamily: "'Bebas Neue', sans-serif",
+        fontSize: 22, color: "#fff", letterSpacing: 1, lineHeight: 1.1,
+      }}>{label}</div>
+    </div>
+  );
+}
+
+function MatchCard({ id, title, theme, top, bottom, vsLabel = "VS", winnerTo, loserTo, large }) {
+  return (
+    <div style={{ position: "relative" }}>
+      {/* Match label */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
+      }}>
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 10, fontWeight: 700, letterSpacing: 2,
+          padding: "4px 8px", borderRadius: 4,
+          background: theme.chip, color: theme.text,
+          border: `1px solid ${theme.accentDim}`,
+        }}>{id}</div>
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 16, letterSpacing: 2, color: theme.text,
+        }}>{title}</div>
+      </div>
+
+      <div style={{
+        position: "relative",
+        background: "linear-gradient(180deg, rgba(16,16,24,0.7), rgba(8,8,14,0.7))",
+        border: `1px solid ${theme.accentDim}`,
+        borderRadius: 14,
+        padding: 14,
+        boxShadow: `0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)`,
+      }}>
+        {/* Corner ticks */}
+        {[[0,0],[1,0],[0,1],[1,1]].map(([x,y], i) => (
+          <div key={i} style={{
+            position: "absolute",
+            [x?"right":"left"]: -1, [y?"bottom":"top"]: -1,
+            width: 12, height: 12,
+            borderTop: y ? "none" : `2px solid ${theme.accent}`,
+            borderBottom: y ? `2px solid ${theme.accent}` : "none",
+            borderLeft: x ? "none" : `2px solid ${theme.accent}`,
+            borderRight: x ? `2px solid ${theme.accent}` : "none",
+          }} />
+        ))}
+
+        {top}
+
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          margin: "10px 0",
+        }}>
+          <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${theme.accentDim}, transparent)` }} />
+          <span style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: large ? 22 : 16, letterSpacing: 3,
+            color: theme.accent, textShadow: `0 0 12px ${theme.accent}`,
+          }}>{vsLabel}</span>
+          <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${theme.accentDim}, transparent)` }} />
+        </div>
+
+        {bottom}
+
+        {/* Outcome footer */}
+        {(winnerTo || loserTo) && (
+          <div style={{
+            marginTop: 12, paddingTop: 10,
+            borderTop: `1px dashed ${theme.accentDim}`,
+            display: "flex", flexDirection: "column", gap: 4,
+          }}>
+            {winnerTo && (
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, color: "rgba(255,255,255,0.55)",
+              }}>
+                <span style={{ color: theme.text }}>↗ WIN →</span> {winnerTo}
+              </div>
+            )}
+            {loserTo && (
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, color: "rgba(255,255,255,0.55)",
+              }}>
+                <span style={{ color: "#fb7124" }}>↘ LOSS →</span> {loserTo}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------
+   CONNECTOR LINES (SVG overlays per row)
+---------------------------------------------------------- */
+function Connector({ theme, variant }) {
+  // variant: "pair-down" (two cards merge into one to the right)
+  //          "single-right" (one card flows to the right)
+  const stroke = theme.accent;
+  const glow = theme.accentDim;
+  const w = 56;
+
+  if (variant === "pair-down") {
+    return (
+      <svg width={w} height="100%" viewBox={`0 0 ${w} 240`} preserveAspectRatio="none"
+        style={{ display: "block", filter: `drop-shadow(0 0 4px ${glow})` }}>
+        <path d={`M 0 60 H ${w/2} V 180 H 0`} fill="none" stroke={stroke} strokeWidth="2" />
+        <path d={`M ${w/2} 120 H ${w}`} fill="none" stroke={stroke} strokeWidth="2" />
+        <circle cx={w} cy="120" r="3" fill={stroke} />
+      </svg>
+    );
+  }
+  if (variant === "single-right") {
+    return (
+      <svg width={w} height="100%" viewBox={`0 0 ${w} 120`} preserveAspectRatio="none"
+        style={{ display: "block", filter: `drop-shadow(0 0 4px ${glow})` }}>
+        <path d={`M 0 60 H ${w}`} fill="none" stroke={stroke} strokeWidth="2" />
+        <circle cx={w} cy="60" r="3" fill={stroke} />
+      </svg>
+    );
+  }
+  return null;
+}
+
+/* ----------------------------------------------------------
+   SECTION HEADER
+---------------------------------------------------------- */
+function SectionHeader({ theme, number, subtitle }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 16,
+      marginBottom: 24,
+    }}>
+      <div style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 14, fontWeight: 700,
+        color: theme.accent,
+        padding: "6px 12px",
+        border: `1.5px solid ${theme.accent}`,
+        borderRadius: 6,
+        boxShadow: theme.glow,
+        background: theme.chip,
+      }}>
+        {number}
+      </div>
+      <div>
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 36, letterSpacing: 3,
+          color: "#fff",
+          textShadow: `0 0 20px ${theme.accentDim}`,
+          lineHeight: 1,
+        }}>
+          {theme.name}
+        </div>
+        {subtitle && (
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, color: "rgba(255,255,255,0.5)",
+            letterSpacing: 2, marginTop: 4,
+          }}>{subtitle}</div>
+        )}
+      </div>
+      <div style={{
+        flex: 1, height: 2,
+        background: `linear-gradient(90deg, ${theme.accent}, transparent)`,
+        boxShadow: `0 0 12px ${theme.accent}`,
+      }} />
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------
+   APP
+---------------------------------------------------------- */
+function App() {
+  return (
+    <div style={{
+      minWidth: 1480,
+      maxWidth: 1720,
+      margin: "0 auto",
+      padding: "40px 48px 80px",
+    }}>
+      {/* ---------- HERO ---------- */}
+      <header style={{
+        position: "relative",
+        padding: "32px 0 28px",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        marginBottom: 48,
+      }}>
+        <div style={{
+          display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+          gap: 32, flexWrap: "wrap",
+        }}>
+          <div>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12, marginBottom: 12,
+            }}>
+              <div style={{
+                width: 10, height: 10, background: "#10b981", borderRadius: 2,
+                boxShadow: "0 0 12px #10b981",
+              }} />
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 12, letterSpacing: 3, color: "#10b981",
+              }}>SEASON 04 · LIVE BROADCAST</span>
+            </div>
+            <h1 style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 112, lineHeight: 0.9, letterSpacing: 2,
+              margin: 0,
+              background: "linear-gradient(180deg, #fff 0%, #fff 60%, rgba(168,85,247,0.7) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              textShadow: "0 0 60px rgba(168,85,247,0.25)",
+            }}>
+              DOUBLE<br/>ELIMINATION
+            </h1>
+            <div style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 18, color: "rgba(255,255,255,0.6)",
+              marginTop: 10, maxWidth: 620,
+            }}>
+              Four squads. Two brackets. One showcase. The full road from Round 1 to the All-Star spotlight.
+            </div>
+          </div>
+
+          {/* Stats panel */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(4, auto)", gap: 0,
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 12,
+            overflow: "hidden",
+            background: "rgba(10,10,16,0.5)",
+          }}>
+            {[
+              { l: "TEAMS", v: "04", c: "#22d3ee" },
+              { l: "PLAYERS", v: "12", c: "#f472b6" },
+              { l: "MATCHES", v: "06", c: "#a855f7" },
+              { l: "SHOWCASE", v: "01", c: "#ec4899" },
+            ].map((s, i) => (
+              <div key={s.l} style={{
+                padding: "16px 24px",
+                borderLeft: i ? "1px solid rgba(255,255,255,0.08)" : "none",
+              }}>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,0.5)",
+                }}>{s.l}</div>
+                <div style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 42, color: s.c,
+                  textShadow: `0 0 16px ${s.c}`,
+                  lineHeight: 1, marginTop: 4,
+                }}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* =========================================================
+          WINNERS BRACKET
+      ========================================================= */}
+      <section style={{ marginBottom: 64 }}>
+        <SectionHeader theme={themes.winners} number="01" subtitle="THREE MATCHES · WIN OR DROP TO LOSERS" />
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 56px 1fr 56px 1fr",
+          alignItems: "stretch",
+          gap: 0,
+        }}>
+          {/* Column: WB R1 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 36, justifyContent: "space-around" }}>
+            <MatchCard
+              id="MATCH 01"
+              title="WB ROUND 1"
+              theme={themes.winners}
+              winnerTo="WB Finals (Match 3)"
+              loserTo="LB Round 1 (Match 4)"
+              top={<TeamCard team={teams.A} theme={themes.winners} />}
+              bottom={<TeamCard team={teams.D} theme={themes.winners} />}
+            />
+            <MatchCard
+              id="MATCH 02"
+              title="WB ROUND 1"
+              theme={themes.winners}
+              winnerTo="WB Finals (Match 3)"
+              loserTo="LB Round 1 (Match 4)"
+              top={<TeamCard team={teams.B} theme={themes.winners} />}
+              bottom={<TeamCard team={teams.C} theme={themes.winners} />}
+            />
+          </div>
+
+          {/* Connector */}
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Connector theme={themes.winners} variant="pair-down" />
+          </div>
+
+          {/* Column: WB Finals */}
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <MatchCard
+              id="MATCH 03"
+              title="WB FINALS"
+              theme={themes.winners}
+              winnerTo="Grand Finals (Match 6)"
+              loserTo="LB Finals (Match 5)"
+              top={<TBDCard label="Winner of Match 1" theme={themes.winners} />}
+              bottom={<TBDCard label="Winner of Match 2" theme={themes.winners} />}
+            />
+          </div>
+
+          {/* Connector */}
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Connector theme={themes.winners} variant="single-right" />
+          </div>
+
+          {/* Column: WB Champion preview */}
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{
+              padding: 18,
+              border: `1.5px solid ${themes.winners.border}`,
+              borderRadius: 14,
+              background: `linear-gradient(180deg, rgba(16,185,129,0.08), rgba(8,8,14,0.6))`,
+              boxShadow: themes.winners.glow,
+              textAlign: "center",
+            }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, letterSpacing: 3, color: themes.winners.text,
+              }}>UPPER BRACKET CHAMPION</div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 56, lineHeight: 1, marginTop: 6,
+                color: "#fff", textShadow: themes.winners.glow,
+              }}>★</div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 22, letterSpacing: 2, color: "#fff", marginTop: 4,
+              }}>TO GRAND FINALS</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 6,
+              }}>direct seed · zero losses</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
+          LOSERS BRACKET
+      ========================================================= */}
+      <section style={{ marginBottom: 64 }}>
+        <SectionHeader theme={themes.losers} number="02" subtitle="SECOND CHANCE · ONE MORE LOSS AND YOU'RE OUT" />
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 56px 1fr 56px 1fr",
+          alignItems: "stretch",
+          gap: 0,
+        }}>
+          {/* LB R1 */}
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <MatchCard
+              id="MATCH 04"
+              title="LB ROUND 1"
+              theme={themes.losers}
+              winnerTo="LB Finals (Match 5)"
+              loserTo="ELIMINATED · 4th place"
+              top={<TBDCard label="Loser of Match 1" theme={themes.losers} />}
+              bottom={<TBDCard label="Loser of Match 2" theme={themes.losers} />}
+            />
+          </div>
+
+          {/* Connector */}
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Connector theme={themes.losers} variant="single-right" />
+          </div>
+
+          {/* LB Finals */}
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <MatchCard
+              id="MATCH 05"
+              title="LB FINALS"
+              theme={themes.losers}
+              winnerTo="Grand Finals (Match 6)"
+              loserTo="ELIMINATED · 3rd place"
+              top={<TBDCard label="Winner of Match 4" theme={themes.losers} />}
+              bottom={<TBDCard label="Loser of Match 3" theme={themes.losers} />}
+            />
+          </div>
+
+          {/* Connector */}
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Connector theme={themes.losers} variant="single-right" />
+          </div>
+
+          {/* LB Champion preview */}
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{
+              padding: 18,
+              border: `1.5px solid ${themes.losers.border}`,
+              borderRadius: 14,
+              background: `linear-gradient(180deg, rgba(251,113,36,0.08), rgba(8,8,14,0.6))`,
+              boxShadow: themes.losers.glow,
+              textAlign: "center",
+            }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, letterSpacing: 3, color: themes.losers.text,
+              }}>LOWER BRACKET CHAMPION</div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 56, lineHeight: 1, marginTop: 6,
+                color: "#fff", textShadow: themes.losers.glow,
+              }}>↑</div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 22, letterSpacing: 2, color: "#fff", marginTop: 4,
+              }}>FOUGHT BACK</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 6,
+              }}>survived elimination
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
+          GRAND FINALS
+      ========================================================= */}
+      <section style={{ marginBottom: 64 }}>
+        <SectionHeader theme={themes.grand} number="03" subtitle="ONE MATCH · ONE CHAMPION" />
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1.4fr 1fr",
+          gap: 32,
+          alignItems: "center",
+        }}>
+          {/* Left feed */}
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 12,
+            alignItems: "flex-end",
+          }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10, letterSpacing: 3, color: themes.winners.text,
+            }}>← FEED FROM WB</div>
+            <div style={{
+              padding: "10px 16px",
+              border: `1px solid ${themes.winners.border}`,
+              borderRadius: 999,
+              background: themes.winners.chip,
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 18, letterSpacing: 2,
+              color: themes.winners.text,
+            }}>WB CHAMPION</div>
+          </div>
+
+          {/* Grand Finals Center */}
+          <div style={{
+            position: "relative",
+            padding: "32px 28px",
+            border: `2px solid ${themes.grand.border}`,
+            borderRadius: 20,
+            background: `
+              radial-gradient(ellipse at top, rgba(168,85,247,0.18), transparent 70%),
+              radial-gradient(ellipse at bottom, rgba(251,191,36,0.12), transparent 70%),
+              linear-gradient(180deg, rgba(20,12,30,0.95), rgba(8,8,14,0.95))
+            `,
+            boxShadow: `${themes.grand.glow}, 0 30px 80px rgba(0,0,0,0.7)`,
+            textAlign: "center",
+          }}>
+            {/* Trophy mark */}
+            <div style={{
+              position: "absolute", top: -16, left: "50%", transform: "translateX(-50%)",
+              padding: "6px 14px",
+              background: "#07070d",
+              border: `1.5px solid ${themes.grand.gold}`,
+              borderRadius: 6,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, letterSpacing: 3, fontWeight: 700,
+              color: themes.grand.gold,
+              boxShadow: `0 0 16px ${themes.grand.gold}`,
+            }}>★ MATCH 06 ★</div>
+
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 64, lineHeight: 1, letterSpacing: 4,
+              background: `linear-gradient(180deg, #fbbf24, #a855f7)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}>GRAND FINALS</div>
+
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr auto 1fr",
+              alignItems: "center", gap: 18, marginTop: 22,
+            }}>
+              <TBDCard label="Winners Bracket Champion" theme={themes.grand} />
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 44, color: themes.grand.gold,
+                textShadow: `0 0 24px ${themes.grand.gold}`,
+                letterSpacing: 3,
+              }}>VS</div>
+              <TBDCard label="Losers Bracket Champion" theme={themes.grand} />
+            </div>
+
+            <div style={{
+              marginTop: 22,
+              display: "inline-flex", gap: 14, alignItems: "center",
+              padding: "10px 20px",
+              border: `1px solid ${themes.grand.gold}`,
+              borderRadius: 999,
+              background: "rgba(251,191,36,0.06)",
+            }}>
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11, letterSpacing: 2, color: themes.grand.gold,
+              }}>WINNER TAKES THE TITLE</span>
+              <span style={{
+                fontFamily: "'Bebas Neue', sans-serif", fontSize: 22,
+                color: themes.grand.gold, lineHeight: 1,
+              }}>🏆</span>
+            </div>
+          </div>
+
+          {/* Right feed */}
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 12,
+            alignItems: "flex-start",
+          }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10, letterSpacing: 3, color: themes.losers.text,
+            }}>FEED FROM LB →</div>
+            <div style={{
+              padding: "10px 16px",
+              border: `1px solid ${themes.losers.border}`,
+              borderRadius: 999,
+              background: themes.losers.chip,
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 18, letterSpacing: 2,
+              color: themes.losers.text,
+            }}>LB CHAMPION</div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
+          ALL-STAR SHOWCASE
+      ========================================================= */}
+      <section style={{ marginBottom: 24 }}>
+        <SectionHeader theme={themes.allstar} number="04" subtitle="POST-FINALS · EXHIBITION MATCH" />
+
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32,
+        }}>
+          {/* Explanation panel */}
+          <div style={{
+            padding: 28,
+            border: `1.5px solid ${themes.allstar.border}`,
+            borderRadius: 16,
+            background: `
+              radial-gradient(ellipse at top right, rgba(236,72,153,0.18), transparent 60%),
+              linear-gradient(180deg, rgba(20,8,18,0.95), rgba(8,8,14,0.95))
+            `,
+            boxShadow: themes.allstar.glow,
+          }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, letterSpacing: 3, color: themes.allstar.text,
+              marginBottom: 10,
+            }}>// FORMAT NOTE</div>
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 44, lineHeight: 0.95, letterSpacing: 2, color: "#fff",
+            }}>THE TOP 3 SCORERS<br/>JOIN FORCES.</div>
+            <p style={{
+              marginTop: 16, marginBottom: 0,
+              fontSize: 16, lineHeight: 1.55,
+              color: "rgba(255,255,255,0.72)",
+            }}>
+              After the Grand Finals, the <span style={{ color: themes.allstar.text, fontWeight: 600 }}>three highest-scoring players</span> across the entire event — regardless of team or bracket — are pulled together to form a brand-new mixed squad. They face the <span style={{ color: themes.grand.gold, fontWeight: 600 }}>Grand Champion team</span> head-to-head in a single showcase match.
+            </p>
+            <p style={{
+              marginTop: 12, marginBottom: 0,
+              fontSize: 14, lineHeight: 1.55,
+              color: "rgba(255,255,255,0.55)",
+              fontStyle: "italic",
+            }}>
+              No bracket implications. No eliminations. Just bragging rights and a highlight reel.
+            </p>
+
+            {/* Pill row */}
+            <div style={{
+              marginTop: 22, display: "flex", gap: 10, flexWrap: "wrap",
+            }}>
+              {["NO STAKES", "MIXED ROSTERS", "EXHIBITION ONLY", "BRAGGING RIGHTS"].map(t => (
+                <span key={t} style={{
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  border: `1px solid ${themes.allstar.accentDim}`,
+                  background: themes.allstar.chip,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, letterSpacing: 2, color: themes.allstar.text,
+                }}>{t}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Match visual */}
+          <div style={{
+            position: "relative",
+            padding: 24,
+            border: `1.5px solid ${themes.allstar.border}`,
+            borderRadius: 16,
+            background: `linear-gradient(180deg, rgba(20,8,18,0.95), rgba(8,8,14,0.95))`,
+            boxShadow: themes.allstar.glow,
+          }}>
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "baseline",
+              marginBottom: 16,
+            }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, letterSpacing: 3, color: themes.allstar.text,
+                padding: "4px 8px",
+                background: themes.allstar.chip,
+                border: `1px solid ${themes.allstar.accentDim}`,
+                borderRadius: 4,
+              }}>SHOWCASE</div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 22, letterSpacing: 3, color: themes.allstar.text,
+              }}>3 VS 3</div>
+            </div>
+
+            {/* All-Star team */}
+            <div style={{
+              padding: 16,
+              border: `1.5px solid ${themes.allstar.border}`,
+              borderRadius: 12,
+              background: `
+                linear-gradient(135deg, rgba(236,72,153,0.15), rgba(168,85,247,0.10), rgba(251,191,36,0.10))
+              `,
+              boxShadow: `inset 0 0 30px rgba(236,72,153,0.15)`,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
+              }}>
+                <span style={{
+                  fontFamily: "'Bebas Neue', sans-serif", fontSize: 30,
+                  color: "#fff", letterSpacing: 2,
+                }}>ALL-STAR SQUAD</span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, color: themes.allstar.text, letterSpacing: 2,
+                }}>★ TOP 3 SCORERS</span>
+              </div>
+              <div style={{
+                display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8,
+              }}>
+                {["#1 SCORER", "#2 SCORER", "#3 SCORER"].map((s, i) => (
+                  <div key={s} style={{
+                    padding: "10px 12px",
+                    border: `1px dashed ${themes.allstar.border}`,
+                    borderRadius: 8,
+                    background: "rgba(0,0,0,0.3)",
+                  }}>
+                    <div style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 9, letterSpacing: 2, color: themes.allstar.text,
+                    }}>{s}</div>
+                    <div style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 20, color: "#fff", marginTop: 4, lineHeight: 1,
+                    }}>TBD</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* VS */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10, margin: "14px 0",
+            }}>
+              <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${themes.allstar.accentDim}, transparent)` }} />
+              <span style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 30, letterSpacing: 4,
+                color: themes.allstar.accent,
+                textShadow: `0 0 16px ${themes.allstar.accent}`,
+              }}>VS</span>
+              <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${themes.allstar.accentDim}, transparent)` }} />
+            </div>
+
+            {/* Grand Champion team */}
+            <div style={{
+              padding: 16,
+              border: `1.5px solid ${themes.grand.border}`,
+              borderRadius: 12,
+              background: `
+                linear-gradient(135deg, rgba(168,85,247,0.15), rgba(251,191,36,0.10))
+              `,
+              boxShadow: `inset 0 0 30px rgba(168,85,247,0.15)`,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
+              }}>
+                <span style={{
+                  fontFamily: "'Bebas Neue', sans-serif", fontSize: 30,
+                  color: "#fff", letterSpacing: 2,
+                }}>GRAND CHAMPION</span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, color: themes.grand.gold, letterSpacing: 2,
+                }}>🏆 WINNER OF MATCH 06
+                </span>
+              </div>
+              <div style={{
+                display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8,
+              }}>
+                {["P1", "P2", "P3"].map((s, i) => (
+                  <div key={s} style={{
+                    padding: "10px 12px",
+                    border: `1px dashed ${themes.grand.border}`,
+                    borderRadius: 8,
+                    background: "rgba(0,0,0,0.3)",
+                  }}>
+                    <div style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 9, letterSpacing: 2, color: themes.grand.text,
+                    }}>{s} · CHAMPION</div>
+                    <div style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 20, color: "#fff", marginTop: 4, lineHeight: 1,
+                    }}>TBD</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                marginTop: 10,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, color: "rgba(255,255,255,0.4)",
+              }}>
+                ↑ THE TEAM THAT WINS GRAND FINALS DEFENDS THEIR TITLE
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
+          PRIZE POOL
+      ========================================================= */}
+      <section style={{ marginTop: 64, marginBottom: 24 }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 16, marginBottom: 24,
+        }}>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 14, fontWeight: 700,
+            color: "#fbbf24",
+            padding: "6px 12px",
+            border: `1.5px solid #fbbf24`,
+            borderRadius: 6,
+            boxShadow: "0 0 24px rgba(251, 191, 36, 0.55)",
+            background: "rgba(251, 191, 36, 0.10)",
+          }}>05</div>
+          <div>
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 36, letterSpacing: 3, color: "#fff",
+              textShadow: "0 0 20px rgba(251, 191, 36, 0.35)",
+              lineHeight: 1,
+            }}>PRIZE POOL</div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, color: "rgba(255,255,255,0.5)",
+              letterSpacing: 2, marginTop: 4,
+            }}>EMOTICONS 30D · PHP CASH</div>
+          </div>
+          <div style={{
+            flex: 1, height: 2,
+            background: "linear-gradient(90deg, #fbbf24, transparent)",
+            boxShadow: "0 0 12px #fbbf24",
+          }} />
+        </div>
+
+        {/* 4 placement cards + showcase */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 16,
+          marginBottom: 16,
+        }}>
+          {[
+            {
+              place: "1ST",
+              label: "GRAND WINNER",
+              cash: "₱3,000",
+              perPlayer: "FOR THE TEAM",
+              extras: "ANY EMOTICONS · 30 DAYS",
+              color: "#fbbf24",
+              accent: "#a855f7",
+              icon: "🏆",
+              big: true,
+            },
+            {
+              place: "2ND",
+              label: "RUNNER-UP",
+              cash: "₱500",
+              perPlayer: "PER PLAYER",
+              extras: "ANY EMOTICONS · 30 DAYS",
+              color: "#e5e7eb",
+              accent: "#9ca3af",
+              icon: "🥈",
+            },
+            {
+              place: "3RD",
+              label: "BRONZE",
+              cash: "₱200",
+              perPlayer: "PER PLAYER",
+              extras: "ANY EMOTICONS · 30 DAYS",
+              color: "#f59e0b",
+              accent: "#d97706",
+              icon: "🥉",
+            },
+            {
+              place: "4TH",
+              label: "FINALIST",
+              cash: "—",
+              perPlayer: "PARTICIPATION",
+              extras: "ANY EMOTICONS · 30 DAYS",
+              color: "#94a3b8",
+              accent: "#64748b",
+              icon: "✦",
+            },
+          ].map((p, i) => (
+            <div key={p.place} style={{
+              position: "relative",
+              padding: 20,
+              border: `1.5px solid ${p.color}`,
+              borderRadius: 14,
+              background: `
+                linear-gradient(180deg, ${hexToRgba(p.color, 0.10)}, rgba(8,8,14,0.95))
+              `,
+              boxShadow: p.big
+                ? `0 0 32px ${hexToRgba(p.color, 0.45)}, 0 20px 60px rgba(0,0,0,0.5)`
+                : `0 0 16px ${hexToRgba(p.color, 0.20)}, 0 12px 40px rgba(0,0,0,0.4)`,
+              transform: p.big ? "translateY(-6px)" : "none",
+            }}>
+              {/* Crown/icon row */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                marginBottom: 12,
+              }}>
+                <div style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: p.big ? 64 : 52,
+                  lineHeight: 0.9,
+                  color: p.color,
+                  textShadow: `0 0 16px ${hexToRgba(p.color, 0.5)}`,
+                  letterSpacing: 1,
+                }}>{p.place}</div>
+                <div style={{ fontSize: p.big ? 40 : 32, lineHeight: 1 }}>{p.icon}</div>
+              </div>
+
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, letterSpacing: 3,
+                color: p.color, marginBottom: 14,
+              }}>{p.label}</div>
+
+              {/* Cash row */}
+              <div style={{
+                padding: "12px 14px",
+                background: "rgba(0,0,0,0.5)",
+                border: `1px dashed ${hexToRgba(p.color, 0.5)}`,
+                borderRadius: 10,
+                marginBottom: 10,
+              }}>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 9, letterSpacing: 2, color: "rgba(255,255,255,0.5)",
+                }}>CASH</div>
+                <div style={{
+                  display: "flex", alignItems: "baseline", gap: 6, marginTop: 2,
+                }}>
+                  <span style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: p.big ? 44 : 36,
+                    color: "#fff",
+                    textShadow: `0 0 12px ${hexToRgba(p.color, 0.6)}`,
+                    lineHeight: 1,
+                    letterSpacing: 1,
+                  }}>{p.cash}</span>
+                  {p.cash !== "—" && (
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 9, color: "rgba(255,255,255,0.5)",
+                      letterSpacing: 1.5,
+                    }}>{p.perPlayer}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Emoticons */}
+              <div style={{
+                padding: "10px 14px",
+                background: "rgba(0,0,0,0.3)",
+                border: `1px solid ${hexToRgba(p.color, 0.3)}`,
+                borderRadius: 10,
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <span style={{ fontSize: 18 }}>✦</span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 11, color: "rgba(255,255,255,0.85)",
+                  letterSpacing: 1,
+                }}>{p.extras}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* All-Star Showcase Bonus */}
+        <div style={{
+          padding: "18px 22px",
+          border: `1.5px solid ${themes.allstar.border}`,
+          borderRadius: 14,
+          background: `
+            linear-gradient(90deg, rgba(236,72,153,0.18), rgba(168,85,247,0.10), rgba(251,191,36,0.10))
+          `,
+          boxShadow: themes.allstar.glow,
+          display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap",
+          justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{
+              padding: "6px 12px",
+              border: `1px solid ${themes.allstar.border}`,
+              borderRadius: 999,
+              background: themes.allstar.chip,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, letterSpacing: 2,
+              color: themes.allstar.text,
+            }}>★ BONUS</div>
+            <div>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 28, color: "#fff", letterSpacing: 2, lineHeight: 1,
+              }}>ALL-STAR SHOWCASE WINNERS</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11, color: "rgba(255,255,255,0.6)",
+                letterSpacing: 1.5, marginTop: 4,
+              }}>WINNING SIDE OF THE EXHIBITION SHARES THE POT
+              </div>
+            </div>
+          </div>
+          <div style={{
+            display: "flex", alignItems: "baseline", gap: 10,
+          }}>
+            <span style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 56, lineHeight: 1, letterSpacing: 1,
+              color: "#fff",
+              textShadow: `0 0 20px ${themes.allstar.accent}`,
+            }}>₱2,000</span>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, color: themes.allstar.text,
+              letterSpacing: 2,
+            }}>TOTAL POT</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- FOOTER ---------- */}
+      <footer style={{
+        marginTop: 56,
+        paddingTop: 24,
+        borderTop: "1px solid rgba(255,255,255,0.08)",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        flexWrap: "wrap", gap: 16,
+      }}>
+        <div style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 11, letterSpacing: 2, color: "rgba(255,255,255,0.4)",
+        }}>
+          BRACKET v1.0 · DOUBLE-ELIM · 4 TEAMS · 6 MATCHES + 1 SHOWCASE
+        </div>
+        <div style={{ display: "flex", gap: 12 }}>
+          {Object.entries(themes).map(([k, t]) => (
+            <div key={k} style={{
+              display: "flex", alignItems: "center", gap: 6,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10, color: "rgba(255,255,255,0.5)", letterSpacing: 1.5,
+            }}>
+              <span style={{
+                width: 10, height: 10, borderRadius: 2,
+                background: t.accent, boxShadow: `0 0 8px ${t.accent}`,
+              }} />
+              {t.name}
+            </div>
+          ))}
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
